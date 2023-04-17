@@ -7,6 +7,7 @@
  */
 #include "heartbeat.h"
 #include "heartbeat-util-shared.h"
+#include "sim_api.h"
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -189,8 +190,11 @@ int64_t heartbeat( heartbeat_t* hb, int tag )
     pthread_mutex_lock(&hb->mutex);
     //printf("Registering Heartbeat\n");
     old_last_time = hb->last_timestamp;
-    clock_gettime( CLOCK_REALTIME, &time_info );
-    time = ( (int64_t) time_info.tv_sec * 1000000000 + (int64_t) time_info.tv_nsec );
+    time = SimUser(0x123, 1) * 1000000; // get fs time and convert to ns
+    // TODO - parse with gmtime(), to see if value is valid timestamp?
+    //      - Maybe simpler parse method to minimize perf impact of beats.
+    //      - Make sure types don't clash
+
     hb->last_timestamp = time;
 
     if(hb->first_timestamp == -1) {
