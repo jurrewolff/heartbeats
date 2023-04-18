@@ -190,7 +190,8 @@ int64_t heartbeat( heartbeat_t* hb, int tag )
     pthread_mutex_lock(&hb->mutex);
     //printf("Registering Heartbeat\n");
     old_last_time = hb->last_timestamp;
-    time = SimUser(0x123, 1) * 1000000; // get fs time and convert to ns
+    time = SimUser(0x123, 1) / 1000000; // get fs time and convert to ns
+
     // TODO - parse with gmtime(), to see if value is valid timestamp?
     //      - Maybe simpler parse method to minimize perf impact of beats.
     //      - Make sure types don't clash
