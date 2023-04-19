@@ -7,12 +7,14 @@
  */
 #include "heartbeat.h"
 #include "heartbeat-util-shared.h"
-#include "sim_api.h"
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <time.h>
+#include <dirent.h>
+#include <stdio.h>
+#include <errno.h>
 
 heartbeat_t* heartbeat_init(int64_t window_size,
                             int64_t buffer_depth,
@@ -92,6 +94,37 @@ heartbeat_t* heartbeat_init(int64_t window_size,
   }
   fclose(hb->binary_file);
 
+  const char* pattern = "hb_timefile.******";
+
+  DIR* dir = opendir("/tmp");
+  if (dir == NULL) {
+      perror("failed to open directory for timefile\n");
+      heartbeat_finish(hb);
+      return NULL;
+  }
+
+  struct dirent* entry;
+  while ((entry = readdir(dir)) != NULL) {
+      if (fnmatch(pattern, entry->d_name, 0) == 0) {
+         strncpy(hb->timefile, entry->d_name, sizeof hb->timefile);
+         break;
+      }
+  }
+
+  closedir(dir);
+
+  if (hb->timefile[0] == '\0') {
+    perror("failed to locate timefile");
+    heartbeat_finish(hb);
+    return NULL;
+  }
+
+  // File is closed in hb_finish()
+  if ((hb->timefile_fp = fopen(hb->timefile, "r")) == NULL) {
+      perror("failed to open time file");
+      return NULL;
+  }
+
   return hb;
 }
 
@@ -131,6 +164,9 @@ void heartbeat_finish(heartbeat_t* hb) {
       fclose(hb->text_file);
     }
     remove(hb->filename);
+    if(hb->timefile_fp != NULL) {
+      fclose(hb->timefile_fp);
+    }
     /*TODO : need to deallocate log */
     free(hb);
   }
@@ -186,15 +222,18 @@ int64_t heartbeat( heartbeat_t* hb, int tag )
     struct timespec time_info;
     int64_t time;
     int64_t old_last_time;
+    errno = 0;
 
     pthread_mutex_lock(&hb->mutex);
     //printf("Registering Heartbeat\n");
     old_last_time = hb->last_timestamp;
-    time = SimUser(0x123, 1) / 1000000; // get fs time and convert to ns
 
-    // TODO - parse with gmtime(), to see if value is valid timestamp?
-    //      - Maybe simpler parse method to minimize perf impact of beats.
-    //      - Make sure types don't clash
+    char buf[100];
+    fscanf(hb->timefile_fp, "%[^\n]", buf);
+    time = strtol(buf, NULL, 10);
+    if (errno == EINVAL && time == 0) {
+      perror("error converting time read from timefile to int64_t");
+    }
 
     hb->last_timestamp = time;
 
