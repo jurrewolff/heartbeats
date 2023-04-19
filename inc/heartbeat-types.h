@@ -57,7 +57,7 @@ typedef struct {
   int64_t current_index;
   double last_average_time;
 
-  char timefile[128] = {0};
+  char timefile[128];
   FILE *timefile_fp;
 } _heartbeat_t;
 
