@@ -236,13 +236,19 @@ int64_t heartbeat( heartbeat_t* hb, int tag )
     old_last_time = hb->last_timestamp;
 
     char buf[100] = {0};
-    fscanf(hb->timefile_fp, "%[^\n]", buf);
+    int match = fscanf(hb->timefile_fp, "%[^\n]", buf);
+    if (match == 0 || match == EOF) {
+      char err[128];
+      snprintf(err, sizeof(err), "no match found while parsing time from timefile: %s", strerror(errno));
+      perror(err);
+    }
+    
     time = strtol(buf, NULL, 10);
     if (errno == EINVAL && time == 0) {
       perror("error converting time read from timefile to int64_t");
     }
 
-    printf("[HEARTBEAT][DEBUGGING] value read from timefile: %s\n", buf);
+    printf("[HEARTBEAT][DEBUGGING] Got %d match(es) and value read from timefile is: %s\n", match, buf);
 
     hb->last_timestamp = time;
 
