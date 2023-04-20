@@ -234,12 +234,14 @@ int64_t heartbeat( heartbeat_t* hb, int tag )
     //printf("Registering Heartbeat\n");
     old_last_time = hb->last_timestamp;
 
-    char buf[100];
+    char buf[100] = {0};
     fscanf(hb->timefile_fp, "%[^\n]", buf);
     time = strtol(buf, NULL, 10);
     if (errno == EINVAL && time == 0) {
       perror("error converting time read from timefile to int64_t");
     }
+
+    printf("[HEARTBEAT][DEBUGGING] value read from timefile: %s\n", buf)
 
     hb->last_timestamp = time;
 
