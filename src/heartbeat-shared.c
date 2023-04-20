@@ -15,6 +15,7 @@
 #include <dirent.h>
 #include <stdio.h>
 #include <errno.h>
+#include <fnmatch.h>
 
 heartbeat_t* heartbeat_init(int64_t window_size,
                             int64_t buffer_depth,
@@ -126,7 +127,7 @@ heartbeat_t* heartbeat_init(int64_t window_size,
 
   // File is closed in hb_finish()
   if ((hb->timefile_fp = fopen(hb->timefile, "r")) == NULL) {
-    sprintf(err, "failed to open time file '%s': %s", strerror(errno));
+    sprintf(err, "failed to open time file '%s': %s", strerror(errno), hb->timefile);
     perror(err);
     return NULL;
   }
@@ -241,7 +242,7 @@ int64_t heartbeat( heartbeat_t* hb, int tag )
       perror("error converting time read from timefile to int64_t");
     }
 
-    printf("[HEARTBEAT][DEBUGGING] value read from timefile: %s\n", buf)
+    printf("[HEARTBEAT][DEBUGGING] value read from timefile: %s\n", buf);
 
     hb->last_timestamp = time;
 
