@@ -23,6 +23,7 @@ heartbeat_t* heartbeat_init(int64_t window_size,
                             double max_target) {
   int pid = getpid();
   char* enabled_dir;
+  char err[256];
 
   heartbeat_t* hb = (heartbeat_t*) malloc(sizeof(heartbeat_t));
   if (hb == NULL) {
@@ -94,21 +95,22 @@ heartbeat_t* heartbeat_init(int64_t window_size,
   }
   fclose(hb->binary_file);
 
-  const char* pattern = "hb_timefile.******";
+  const char* pattern = "hb_timefile.******"; // e.g. hb_timefile.qGM8RT
 
   DIR* dir = opendir("/tmp");
   if (dir == NULL) {
-      perror("failed to open directory for timefile\n");
-      heartbeat_finish(hb);
-      return NULL;
+    sprintf(err, "failed to open directory for timefile: %s", strerror(errno));
+    perror(err);
+    heartbeat_finish(hb);
+    return NULL;
   }
 
   struct dirent* entry;
   while ((entry = readdir(dir)) != NULL) {
-      if (fnmatch(pattern, entry->d_name, 0) == 0) {
-         strncpy(hb->timefile, entry->d_name, sizeof hb->timefile);
-         break;
-      }
+    if (fnmatch(pattern, entry->d_name, 0) == 0) {
+      strncpy(hb->timefile, entry->d_name, sizeof hb->timefile);
+      break;
+    }
   }
 
   closedir(dir);
@@ -121,8 +123,9 @@ heartbeat_t* heartbeat_init(int64_t window_size,
 
   // File is closed in hb_finish()
   if ((hb->timefile_fp = fopen(hb->timefile, "r")) == NULL) {
-      perror("failed to open time file");
-      return NULL;
+    sprintf(err, "failed to open time file: %s", strerror(errno));
+    perror(err);
+    return NULL;
   }
 
   return hb;
