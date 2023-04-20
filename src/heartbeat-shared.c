@@ -95,6 +95,9 @@ heartbeat_t* heartbeat_init(int64_t window_size,
   }
   fclose(hb->binary_file);
 
+  // TODO - This is demonstrative code. For prod, hardcoding must be removed,
+  //        probably requiring a nicer way to sync config of timefile paths
+  //        between libheartbeats and HotSniper scheduler_open.cc.
   const char* pattern = "hb_timefile.******"; // e.g. hb_timefile.qGM8RT
 
   DIR* dir = opendir("/tmp");
@@ -108,7 +111,7 @@ heartbeat_t* heartbeat_init(int64_t window_size,
   struct dirent* entry;
   while ((entry = readdir(dir)) != NULL) {
     if (fnmatch(pattern, entry->d_name, 0) == 0) {
-      strncpy(hb->timefile, entry->d_name, sizeof hb->timefile);
+      sprintf(hb->timefile, "/tmp/%s", entry->d_name);
       break;
     }
   }
@@ -123,7 +126,7 @@ heartbeat_t* heartbeat_init(int64_t window_size,
 
   // File is closed in hb_finish()
   if ((hb->timefile_fp = fopen(hb->timefile, "r")) == NULL) {
-    sprintf(err, "failed to open time file: %s", strerror(errno));
+    sprintf(err, "failed to open time file '%s': %s", strerror(errno));
     perror(err);
     return NULL;
   }
