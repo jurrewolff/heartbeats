@@ -24,7 +24,7 @@ heartbeat_t* heartbeat_init(int64_t window_size,
                             double max_target) {
   int pid = getpid();
   char* enabled_dir;
-  char err[256];
+  char err[512];
 
   heartbeat_t* hb = (heartbeat_t*) malloc(sizeof(heartbeat_t));
   if (hb == NULL) {
@@ -127,7 +127,7 @@ heartbeat_t* heartbeat_init(int64_t window_size,
 
   // File is closed in hb_finish()
   if ((hb->timefile_fp = fopen(hb->timefile, "r")) == NULL) {
-    sprintf(err, "failed to open time file '%s': %s", strerror(errno), hb->timefile);
+    snprintf(err, sizeof(err), "failed to open time file '%s': %s", strerror(errno), hb->timefile);
     perror(err);
     return NULL;
   }
@@ -230,25 +230,24 @@ int64_t heartbeat( heartbeat_t* hb, int tag )
     int64_t time;
     int64_t old_last_time;
     errno = 0;
+    char err[512];
+
 
     pthread_mutex_lock(&hb->mutex);
     //printf("Registering Heartbeat\n");
     old_last_time = hb->last_timestamp;
 
     char buf[100] = {0};
-    int match = fscanf(hb->timefile_fp, "%[^\n]", buf);
-    if (match == 0 || match == EOF) {
-      char err[128];
-      snprintf(err, sizeof(err), "no match found while parsing time from timefile: %s", strerror(errno));
+    if (fgets(buf, sizeof(buf), hb->timefile_fp) != NULL) {
+      time = strtol(buf, NULL, 10);
+      if (errno == EINVAL && time == 0) {
+        perror("error converting time read from timefile to int64_t");
+      }
+    } else {
+      snprintf(err, sizeof(err), "error reading line from file '%s': %s", hb->timefile, strerror(errno));
       perror(err);
+      time = 0;
     }
-    
-    time = strtol(buf, NULL, 10);
-    if (errno == EINVAL && time == 0) {
-      perror("error converting time read from timefile to int64_t");
-    }
-
-    printf("[HEARTBEAT][DEBUGGING] Got %d match(es) and value read from timefile is: %s\n", match, buf);
 
     hb->last_timestamp = time;
 
