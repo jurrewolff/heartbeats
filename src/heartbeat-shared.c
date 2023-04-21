@@ -249,6 +249,7 @@ int64_t heartbeat( heartbeat_t* hb, int tag )
       time = 0;
     }
 
+    rewind(hb->timefile_fp);
     hb->last_timestamp = time;
 
     if(hb->first_timestamp == -1) {
