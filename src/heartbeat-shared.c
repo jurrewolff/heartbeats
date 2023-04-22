@@ -241,6 +241,7 @@ int64_t heartbeat( heartbeat_t* hb, int tag )
     if (fscanf(hb->timefile_fp, "%d", &time) != 1) {
       snprintf(err, sizeof(err), "error reading line from file '%s': %s", hb->timefile, strerror(errno));
       perror(err);
+      time = 0;
     }
 
     hb->last_timestamp = time;
