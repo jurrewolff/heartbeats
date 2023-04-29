@@ -96,17 +96,9 @@ heartbeat_t* heartbeat_init(int64_t window_size,
   }
   fclose(hb->binary_file);
 
-  // TODO - This is demonstrative code. For prod, hardcoding must be removed,
-  //        probably requiring a nicer way to sync config of timefile paths
-  //        between libheartbeats and HotSniper scheduler_open.cc.
-
-  // File is closed in hb_finish()
+    // TODO - Remove hardcoded timefile location. Coordinate with HotSniper's
+    //        scheduler_open.cc, who creates and writes to the file.
   strncpy(hb->timefile, "/tmp/hb_timefile\0", sizeof(hb->timefile));
-  if ((hb->timefile_fp = fopen(hb->timefile, "r")) == NULL) {
-    snprintf(err, sizeof(err), "failed to open time file '%s': %s", strerror(errno), hb->timefile);
-    perror(err);
-    return NULL;
-  }
 
   return hb;
 }
@@ -147,9 +139,6 @@ void heartbeat_finish(heartbeat_t* hb) {
       fclose(hb->text_file);
     }
     remove(hb->filename);
-    if(hb->timefile_fp != NULL) {
-      fclose(hb->timefile_fp);
-    }
     /*TODO : need to deallocate log */
     free(hb);
   }
@@ -213,11 +202,21 @@ int64_t heartbeat( heartbeat_t* hb, int tag )
     //printf("Registering Heartbeat\n");
     old_last_time = hb->last_timestamp;
 
+    if ((hb->timefile_fp = fopen(hb->timefile, "r")) == NULL) {
+      snprintf(err, sizeof(err), "failed to open time file '%s': %s", strerror(errno), hb->timefile);
+      perror(err);
+      return NULL;
+    }
+
     rewind(hb->timefile_fp);
     if (fscanf(hb->timefile_fp, "%ld", &time) != 1) {
-      snprintf(err, sizeof(err), "error reading line from file '%s': %s", hb->timefile, strerror(errno));
+      snprintf(err, sizeof(err), "error reading time from timefile '%s': %s", hb->timefile, strerror(errno));
       perror(err);
       time = 0;
+    }
+
+    if(hb->timefile_fp != NULL) {
+      fclose(hb->timefile_fp);
     }
 
     hb->last_timestamp = time;
