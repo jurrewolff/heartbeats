@@ -49,7 +49,7 @@ heartbeat_t* heartbeat_init(int64_t window_size,
       heartbeat_finish(hb);
       return NULL;
     } else {
-      fprintf(hb->text_file, "Beat    Tag    Timestamp    Global Rate    Window Rate    Instant Rate\n" );
+      fprintf(hb->text_file, "Beat\tTag\tTimestamp\tGlobal Rate\tWindow Rate\tInstant Rate\n" );
     }
   } else {
     hb->text_file = NULL;
@@ -117,7 +117,7 @@ static void hb_flush_buffer(heartbeat_t volatile * hb) {
   if(hb->text_file != NULL) {
     for(i = 0; i < nrecords; i++) {
       fprintf(hb->text_file,
-	      "%lld    %d    %lld    %f    %f    %f\n",
+	      "%lld\t%d\t%lld\t%f\t%f\t%f\n",
 	      (long long int) hb->log[i].beat,
 	      hb->log[i].tag,
 	      (long long int) hb->log[i].timestamp,
