@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <fnmatch.h>
+#include <sys/file.h>
 
 heartbeat_t* heartbeat_init(int64_t window_size,
                             int64_t buffer_depth,
@@ -24,7 +25,6 @@ heartbeat_t* heartbeat_init(int64_t window_size,
                             double max_target) {
   int pid = getpid();
   char* enabled_dir;
-  char err[512];
 
   heartbeat_t* hb = (heartbeat_t*) malloc(sizeof(heartbeat_t));
   if (hb == NULL) {
@@ -205,9 +205,15 @@ int64_t heartbeat( heartbeat_t* hb, int tag )
     old_last_time = hb->last_timestamp;
 
     if ((hb->timefile_fp = fopen(hb->timefile, "r")) == NULL) {
-      snprintf(err, sizeof(err), "failed to open time file '%s': %s", strerror(errno), hb->timefile);
+      snprintf(err, sizeof(err), "failed to open time file '%s': %s", hb->timefile, strerror(errno));
       perror(err);
-      return NULL;
+      return -1;
+    }
+
+    if (flock(fileno(hb->timefile_fp), LOCK_SH) == -1) {
+      snprintf(err, sizeof(err), "failed to obtain lock on time file '%s': %s", hb->timefile, strerror(errno));
+      perror(err);
+      return -1;
     }
 
     rewind(hb->timefile_fp);
@@ -217,9 +223,13 @@ int64_t heartbeat( heartbeat_t* hb, int tag )
       time = 0;
     }
 
-    if(hb->timefile_fp != NULL) {
-      fclose(hb->timefile_fp);
+    if (flock(fileno(hb->timefile_fp), LOCK_UN) == -1) {
+      snprintf(err, sizeof(err), "failed to release lock on time file '%s': %s", hb->timefile, strerror(errno));
+      perror(err);
+      return -1;
     }
+
+    fclose(hb->timefile_fp);
 
     hb->last_timestamp = time;
 
